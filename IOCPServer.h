@@ -12,9 +12,9 @@ private :
 	SOCKET m_listenSocket;
 	HANDLE m_hIOCP;
 	CSession* m_pSessions;
-
 	thread* m_acceptThread;
-	//vector<thread> m_vecThreads;
+	vector<thread*> m_workerThread;
+
 
 private:
 	void InitializeSessions(int _maxClient);
@@ -29,13 +29,13 @@ public :
 			m_pInstance = new CIOCPServer;
 			atexit(ReleaseServer);
 		}
-			
-
 		return m_pInstance;
 	}
 	/*----------------------------------*/
 	bool AcceptThreadStart();
 	bool WorkerThreadStart();
+	bool LogicThread();
+
 	bool ServerInitialize(short _port, int _maxClient, int _numWorkerthread);
 	void Accept();
 	/*----------------------------------*/

@@ -12,16 +12,43 @@ void AcceptThreadFunc(void)
 	CIOCPServer* pServer = CIOCPServer::GetInstance();
 	while (true)
 	{
-		cout << "so good" << endl;
 		pServer->Accept();
 	}
 
 }
 void WorkerThreadFunc(void)
 {
+	CIOCPServer* server = CIOCPServer::GetInstance();
+	HANDLE iocpHandle = server->GetIOCPhandle();
+	DWORD byteSucceeded = 0;
+	CSession* session;
+	LPOVERLAPPED overlapped;
+	DWORD sendByte;
+	DWORD recvByte;
+	DWORD flag;
+
 	while (true)
 	{
+		byteSucceeded = 0;
+		session = nullptr;
+		overlapped = nullptr;
+		GetQueuedCompletionStatus(iocpHandle, &byteSucceeded, (PULONG_PTR)&session, &overlapped, INFINITE);
+
+		int G = 0;
 		
+		if (byteSucceeded == 0 && session == nullptr && overlapped == nullptr)
+			break;//PostQueuedCompletionStatus로 로직스레드 종료시 워커 스레드 종료 할수 있도록 한다.
+		/*if (byteSucceeded == 0)
+			server->DisconnectUser(session->GetSessionID());*/
+		if (overlapped == session->getRecvOverlap())//send Order.
+		{ //세션에서 send가 마무리 되었다 !
+			session->OnRecv(byteSucceeded);
+			session->PostRecv();
+		}
+		if (overlapped == session->getSendOverlap())
+		{ //세션에서 recv가 마무리 되었다 !
+			session->OnSend(byteSucceeded);
+		}
 	}
 	return;
 }
@@ -30,7 +57,6 @@ bool CIOCPServer::AcceptThreadStart()
 {
 	m_acceptThread = new thread(AcceptThreadFunc);
 	cout << "Accept Start Port : " << m_port << endl;
-	
 	return true;
 	
 }
@@ -38,9 +64,22 @@ bool CIOCPServer::AcceptThreadStart()
 bool CIOCPServer::WorkerThreadStart()
 {
 	for (int i = 0; i < m_numWorkerThread; ++i)
-		//m_vecThreads.emplace_back(WorkerThreadFunc);
+		m_workerThread.push_back(new thread(WorkerThreadFunc));
+
+	cout << "WorkerThread Start." << endl;
 
 	return true;
+}
+
+bool CIOCPServer::LogicThread()
+{
+	while (true)
+	{
+		
+	}
+	for (auto ThisThread : m_workerThread)
+		ThisThread->join();
+
 }
 
 bool CIOCPServer::ServerInitialize(short _port,int _maxClient,int _numWorkerthread)
@@ -60,15 +99,14 @@ bool CIOCPServer::ServerInitialize(short _port,int _maxClient,int _numWorkerthre
 	servAddr.sin_family = AF_INET;
 	servAddr.sin_port = htons(_port);
 	servAddr.sin_addr.S_un.S_addr = htonl(INADDR_ANY);
-
 	int ret = 0;
+
+	m_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
 
 	ret = ::bind(m_listenSocket, (SOCKADDR*)&servAddr, sizeof(servAddr));
 	NETWORKERRORCHECK(bind, ret, SOCKET_ERROR);
 	ret = listen(m_listenSocket, SOMAXCONN);
 	NETWORKERRORCHECK(listen, ret, SOCKET_ERROR);
-
-	//m_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, 0);
 	InitializeSessions(_maxClient);
 
 	cout << "Server Initialize Succeed." << endl;
@@ -101,6 +139,12 @@ void CIOCPServer::Accept()
 
 	inet_ntop(AF_INET, &clientaddr.sin_addr, bufIpAddr, 256);
 	cout << "Connected User Ip : " <<  bufIpAddr<<  "Port : " << ntohs(clientaddr.sin_port)<< endl;
+
+	m_pSessions[0].Initialize();
+	m_pSessions[0].SetSocket(newSocket);
+	CreateIoCompletionPort((HANDLE)newSocket, m_hIOCP, (ULONG_PTR)(&m_pSessions[0]), 0);
+	m_pSessions[0].PostRecv();
+
 	return;
 	
 }

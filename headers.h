@@ -10,7 +10,4 @@
 #include <string>
 #pragma comment (lib, "WS2_32.lib")
 
-
-
-
 using namespace std;

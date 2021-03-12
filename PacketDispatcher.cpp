@@ -1,22 +1,69 @@
 #include "PacketDispatcher.h"
-#include "Net.h"
-#include "PacketFunctions.h"
-#define CASE_PACKET_FUNCTION(type,param) case type : ON_##type(param); break; 
+#include "Session.h"
 
-void CPacketDispatcher::ProcessPacket(char * _streamStart)
+CPacketDispatcher* CPacketDispatcher::m_pInstance = nullptr;
+
+
+
+
+
+void CPacketDispatcher::ClassifyPacket(CStream * _stream, CSession * _session)
 {
-	switch (_streamStart[0])
+	packetsize_t packetsize = 0;
+	packettype_t packettype = 0;
+	
+	CStream& stream = *_stream;
+	stream >> packetsize;
+	stream >> packettype;
+
+	if (packettype < TYPE_DISPATCH_LOCK_NEED)
+		DirectPacketProcess(_stream,_session, packettype);
+
+	else
 	{
-		CASE_PACKET_FUNCTION(CLIENT_TO_SERVER_MESSAGE,_streamStart);
+		Packet packet;
+		packet.session = _session;
+		packet.stream = _stream;
+		packet.packettpye = packettype;
+		m_recvPackets.Enqueue(packet);
+	}
+		
+
+
+
+}
+void CPacketDispatcher::DirectPacketProcess(CStream* _packet, CSession* _session, packettype_t _type)
+{
+	
+	switch (_type)
+	{
+		CASE_PACKET_FUNCTION(_packet, _session,CLIENT_TO_SERVER_MESSAGE);
 
 	default:
 		break;
 	}
 
+
 }
+
+
+void CPacketDispatcher::ProcessQueuedPackets()
+{
+}
+
 PACKET_FUNCTION_DECLARE(CLIENT_TO_SERVER_MESSAGE)
 {
-	
 
-	return;
+	CStream& stream = *_packet;
+	CSession& session = *_session;
+	string message;
+	stream >> message;
+
+	cout << "from Client : " << message.c_str() << endl;
+
+
 }
+
+
+
+

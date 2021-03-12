@@ -6,6 +6,13 @@
 unsigned int CRingBuffer::Enqueue(void* pData, int nSize)
 {
 
+    if (pData == nullptr)
+    {
+        MoveRear(nSize);
+        return 0;
+    }
+        
+
     int TempFront = m_iFront;
 
 
@@ -94,6 +101,14 @@ unsigned int CRingBuffer::Enqueue(void* pData, int nSize)
 
 unsigned int CRingBuffer::Dequeue(void* pData,  int nSize)
 {
+
+    if (pData == nullptr)
+    {
+        MoveFront(nSize);
+        return 0;
+    }
+        
+
     int TempRear = m_iRear;
 
 	if ( m_iFront == TempRear  )
@@ -120,7 +135,7 @@ unsigned int CRingBuffer::Dequeue(void* pData,  int nSize)
 			Dequeued += DistanceToEnd;
 			Left -= DistanceToEnd;
 
-			DistanceToFront = m_iRear - 0;
+            DistanceToFront = TempRear;
 			if (Left > DistanceToFront)
 			{
 				char* p = ((char*)pData + DistanceToEnd);

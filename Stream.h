@@ -1,5 +1,6 @@
 #pragma once
 #include "Headers.h"
+#include "Net.h"
 /*---------------------------------------------------------------------*/
 /*수신버퍼의 데이터-> CStream-> CPacket -> 로직 수행.
 /*CPacket-> CStream -> 송신버퍼의 데이터
@@ -7,77 +8,57 @@
 
 
 
-
-
 class CStream
 {
-public : 
+private : 
 
     int m_nOffsetOut = 0;
-    vector<char> m_buffer;
-    int m_nRefCnt = 0;
-
+    int m_nOffsetIn = 0;
+    char m_buffer[1024];
 
 public:
 
     void Append(const void * data, int size);
+    void MoveOffsetIn(int size);
     void Clear();
-    size_t GetSize() { return m_buffer.size();}
+   
+    
+    int GetSize() { return m_nOffsetIn;}
     char* GetData() { return &(m_buffer[0]); }
 
-    int  GetRefCnt() { return m_nRefCnt; }
-    void AddRefCnt() { ++m_nRefCnt; }
-    CStream& operator <<(int Data);
-    CStream& operator <<(short& Data);
-    CStream& operator <<(unsigned int& Data);
+   
+
+ 
     
-    CStream& operator <<(const wstring& Data);
-    CStream& operator <<(float& Data);
-    template <typename T>
-    CStream& operator <<(const vector<T>& Data)
-    {
-        unsigned int S = Data.size();
-        *this << S;
 
-        if (S == 0)
-            return *this;
+    CStream& operator << (short& Data);
+    CStream& operator << (int& Data);
+    CStream& operator << (char& Data);
+    CStream& operator << (unsigned int Data);
+    CStream& operator <<(wstring& Data);
+    CStream& operator <<(string& Data);
 
-        char* p = (char*)Data.data();
-        Append(p, sizeof(T) * S);
 
-        return *this;
-    }
+    CStream& operator >> (unsigned int Data);
+    CStream& operator >> (char& Data);
+    CStream& operator >> (int& Data);
+    CStream& operator >> (short& Data);
+    CStream& operator>>(string& Data);
+    CStream& operator>>(wstring& Data);
 
-    CStream& operator >>(int& Data);
-    CStream& operator >>(short& Data);
-    CStream& operator >>(unsigned int& Data);
-    CStream& operator >>(wstring& Data);
-    CStream& operator >>(float& Data);
-
-    template <typename T>
-    CStream& operator >>(vector<T>& Data)
-    {
-        unsigned int S;
-        *this >> S; 
-        for (unsigned int i = 0; i < S; ++i)
-        {
-            Data.push_back( *( (T*)(&m_buffer[m_nOffsetOut]) ) );
-            m_nOffsetOut += sizeof(T);
-        }
-
-        return *this;
-    }
+    template <typename T> CStream& operator <<(const vector<T>& Data);
+    template <typename T> CStream& operator >>(vector<T>& Data);
 
     
 
     CStream()
     {
+        m_nOffsetIn = 0;
+        m_nOffsetOut = 0;
     }
     virtual ~CStream()
     {
     }
 };
-
-
 
 
