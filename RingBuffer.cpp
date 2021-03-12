@@ -394,14 +394,8 @@ void CRingBuffer::Resize(unsigned int Size)
 CRingBuffer::CRingBuffer()
 {
     Resize(10000);
-    
-
-
 }
-
-
 CRingBuffer::~CRingBuffer()
 {
     free( m_pbuffer);
-
 }

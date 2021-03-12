@@ -1,6 +1,5 @@
 #pragma once
 #include "Headers.h"
-#include "Latch.h"
 /*---------------------------------------------------------------------*/
 /*수신버퍼의 데이터-> CStream-> CPacket -> 로직 수행.
 /*CPacket-> CStream -> 송신버퍼의 데이터
@@ -16,7 +15,6 @@ public :
 
     int m_nOffsetOut = 0;
     vector<char> m_buffer;
-    CRITICAL_SECTION m_CS;
     int m_nRefCnt = 0;
 
 
@@ -29,22 +27,11 @@ public:
 
     int  GetRefCnt() { return m_nRefCnt; }
     void AddRefCnt() { ++m_nRefCnt; }
-    void SubRefCnt()
-    {
-        LOCKNOW(&m_CS)
-        {
-            m_nRefCnt--;
-        }
-    }
-
-    void Ready_SendOrder(SendOrder& S);
-   
     CStream& operator <<(int Data);
     CStream& operator <<(short& Data);
     CStream& operator <<(unsigned int& Data);
     
     CStream& operator <<(const wstring& Data);
-    CStream& operator <<(InGameInfo& Data);
     CStream& operator <<(float& Data);
     template <typename T>
     CStream& operator <<(const vector<T>& Data)
@@ -64,8 +51,6 @@ public:
     CStream& operator >>(int& Data);
     CStream& operator >>(short& Data);
     CStream& operator >>(unsigned int& Data);
-    
-    CStream& operator >>(InGameInfo& Data);
     CStream& operator >>(wstring& Data);
     CStream& operator >>(float& Data);
 
@@ -87,16 +72,9 @@ public:
 
     CStream()
     {
-        InitializeCriticalSection(&m_CS);
     }
     virtual ~CStream()
     {
-        LOCKNOW(&m_CS)
-        {
-
-        }
-
-        DeleteCriticalSection(&m_CS);
     }
 };
 

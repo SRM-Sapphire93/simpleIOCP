@@ -5,8 +5,6 @@
 void CStream::Append(const void * Data, int size)
 {
     m_buffer.insert(m_buffer.end(), (char*)Data, (char*)Data + size);
-
-
 }
 
 void CStream::Clear()
@@ -17,18 +15,6 @@ void CStream::Clear()
 
 
 }
-
-
-
-
-void CStream::Ready_SendOrder(SendOrder & S)
-{
-    S.BUF.len = m_buffer.size();
-    S.BUF.buf = GetData();
-    S.PStream = this;
-    
-}
-
 CStream & CStream::operator<<(int Data)
 {
         Append(&Data, sizeof(Data));
@@ -68,25 +54,6 @@ CStream & CStream::operator>>(float & Data)
 
 
 
-CStream & CStream::operator>>(InGameInfo & Data)
-{
-    *this >> Data.ID;
-    *this >> Data.ClassName;
-    *this >> Data.FullHp;
-    *this >> Data.FullMp;
-    *this >> Data.MapNumber;
-    *this >> Data.PosX;
-    *this >> Data.PosY;
-    *this >> Data.PresentHp;
-    *this >> Data.PresentMp;
-    *this >> Data.Direction;
-    *this >> Data.WalkSpeed;
-    *this >> Data.AttackSpeed;
-    *this >> Data.MagicCastingSpeed;
-
-    return *this;
-
-}
 
 CStream & CStream::operator<<(short & Data)
 {
@@ -107,24 +74,6 @@ CStream & CStream::operator<<(const wstring & Data)
     Append(Data.data(), Data.size() * 2);
     return *this;
 }
-CStream & CStream::operator<<(InGameInfo & Data)
-{
-    *this << Data.ID;
-    *this << Data.ClassName;
-    *this << Data.FullHp;
-    *this << Data.FullMp;
-    *this << Data.MapNumber;
-    *this << Data.PosX;
-    *this << Data.PosY;
-    *this << Data.PresentHp;
-    *this << Data.PresentMp;
-    *this << Data.Direction;
-    *this << Data.WalkSpeed;
-    *this << Data.AttackSpeed;
-    *this << Data.MagicCastingSpeed;
-
-    return *this;
-}
 CStream & CStream::operator<<(float & Data)
 {
     Append(&Data, sizeof(Data));
@@ -132,7 +81,6 @@ CStream & CStream::operator<<(float & Data)
 }
 CStream & CStream::operator>>(wstring & Data)
 {
-
     int Size;
     *this >> Size;
     Data.clear();
