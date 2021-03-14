@@ -26,7 +26,7 @@ unsigned int CRingBuffer::Enqueue(void* pData, int nSize)
 	
 	if (m_iRear < TempFront)
 	{
-		ToFrontVancy =  TempFront - m_iRear - 1;
+		ToFrontVancy = TempFront - m_iRear - 1;
 
 		if (nSize > ToFrontVancy)
 		{
@@ -46,9 +46,11 @@ unsigned int CRingBuffer::Enqueue(void* pData, int nSize)
 	{
         int Left = nSize;
         int ToEndVacancy = 0;
-        if (TempFront != 0)
+
+        if (TempFront > 0)
             ToEndVacancy += 1;
-        ToEndVacancy += (m_nSize - 1 - m_iRear);
+
+        ToEndVacancy += (m_nSize - m_iRear - 1);
         if (ToEndVacancy >= Left)
         {
             memcpy(m_pbuffer + m_iRear, pData, Left);
@@ -62,12 +64,14 @@ unsigned int CRingBuffer::Enqueue(void* pData, int nSize)
 
             Left -= ToEndVacancy;
             Enqueued += ToEndVacancy;
-            ToFrontVancy = TempFront;
+            ToFrontVancy = TempFront - 1;
+
+            if (ToFrontVancy < 0)
+                return Enqueued;
 
             char* pSrc = (char*)pData + Enqueued;
             if (ToFrontVancy >= Left)
             {
-                
                 memcpy(m_pbuffer, pSrc, Left);
                 MoveRear(Left);
                 Enqueued += Left;
@@ -83,11 +87,6 @@ unsigned int CRingBuffer::Enqueue(void* pData, int nSize)
 
         }
 
-
-
-		
-		
-		
 
 		return Enqueued;
 
@@ -174,7 +173,6 @@ unsigned int CRingBuffer::Dequeue(void* pData,  int nSize)
 		}
 		else
 		{
-
 			memcpy(pData, m_pbuffer + m_iFront, Left);
 			MoveFront(Left);
 			return Left;
@@ -188,62 +186,74 @@ unsigned int CRingBuffer::Dequeue(void* pData,  int nSize)
 
 unsigned int CRingBuffer::Peek(void * pData, unsigned int nOffsetFromFront)
 {
-    int TempFront = m_iFront;
-    int TempRear = m_iRear;
-    int Left = nOffsetFromFront;
-    int Copyd = 0;
+	
+	int TempRear = m_iRear;
 
-    if (TempFront >= TempRear)
-    {
-        int DistanceToEnd = m_nSize - TempFront ;
-        if (DistanceToEnd >= Left)
-        {
-            memcpy(pData, (m_pbuffer + TempFront), Left);
-            return Left;
-        }
-        else
-        {
-            int DistanceToRear = TempRear;
-            memcpy(pData, (m_pbuffer + TempFront), DistanceToEnd);
-            Left -= DistanceToEnd;
-            Copyd += DistanceToEnd;
-
-            char* pDst = (char*)pData + Copyd;
-
-            if (DistanceToRear >= Left)
-            {
-                memcpy(pDst, m_pbuffer, Left);
-                Copyd += Left;
-                return Copyd;
-            }
-            else
-            {
-                memcpy(pDst, m_pbuffer, DistanceToRear);
-                Copyd += DistanceToRear;
-                return Copyd;
-
-            }
-           
-        }
-    }
-    else
-    {
-        int DistanceToEnd = TempRear - TempFront;
-        //요청 크기보다 남은것의 크기가 클경우.
-        if (DistanceToEnd >= Left)
-        {
-            memcpy(pData, m_pbuffer + TempFront, Left);
-            return Left;
-        }
-        else
-        {//요청크기가 남은것보다 큰 경우.
-            memcpy(pData, m_pbuffer + TempFront, DistanceToEnd);
-            return DistanceToEnd;
-        }
+	if (m_iFront == TempRear)
+		return QUEUE_ERROR_EMPTY;
 
 
-    }
-    return 0;
+	int Left = nOffsetFromFront;
+	int Dequeued = 0;
+	//thread safe 를 위해서.
+
+
+	char* Src = m_pbuffer + m_iFront;
+	int DistanceToEnd = 0;
+	int DistanceToFront = 0;
+
+	if (TempRear < m_iFront)
+	{
+
+		DistanceToEnd = m_nSize - m_iFront;
+		if (Left > DistanceToEnd)
+		{
+			memcpy(pData, Src, DistanceToEnd);
+			Dequeued += DistanceToEnd;
+			Left -= DistanceToEnd;
+
+			DistanceToFront = TempRear;
+			if (Left > DistanceToFront)
+			{
+				char* p = ((char*)pData + DistanceToEnd);
+				memcpy(p, m_pbuffer, DistanceToFront);
+				return DistanceToEnd + DistanceToFront;
+			}
+			else
+			{
+				char* p = ((char*)pData + DistanceToEnd);
+				memcpy(p, m_pbuffer, Left);
+				MoveFront(Left);
+				return DistanceToEnd + Left;
+			}
+
+		}
+		else
+		{
+			memcpy(pData, Src, Left);
+			Dequeued += Left;
+			return Dequeued;
+		}
+
+	}
+
+	else
+	{
+		//thread 사용시 음수가 될 가능성이있다.
+		DistanceToEnd = TempRear - m_iFront;
+		if (Left > DistanceToEnd)
+		{
+			memcpy(pData, m_pbuffer + m_iFront, DistanceToEnd);
+			return DistanceToEnd;
+		}
+		else
+		{
+			memcpy(pData, m_pbuffer + m_iFront, Left);
+			return Left;
+		}
+
+
+	}
 }
 
 unsigned int CRingBuffer::GetUsage()
@@ -408,7 +418,7 @@ void CRingBuffer::Resize(unsigned int Size)
 
 CRingBuffer::CRingBuffer()
 {
-    Resize(10000);
+    Resize(10);
 }
 CRingBuffer::~CRingBuffer()
 {
